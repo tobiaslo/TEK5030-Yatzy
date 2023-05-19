@@ -25,7 +25,7 @@ def removeCircle(keypoint, harris):
     return harris
     
 def getContours(conts, imgContour,frame):
-    contours, hierarchu = cv2.findContours(conts, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, hierarchu = cv2.findContours(conts, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     i = 1
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -51,7 +51,7 @@ def PASS(a):
 
 def lab00():
     device_id = 1
-    cap = cv2.VideoCapture(device_id)
+    cap = cv2.VideoCapture('IMG_3659.MOV')
     
     if not cap.isOpened():
         print(f'Could not open camera {device_id}')

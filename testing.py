@@ -4,8 +4,11 @@ from sklearn.cluster import AgglomerativeClustering
 
 def detect_dice(blobs, threshold):
     if len(blobs) != 0 and len(blobs) != 1:
-        dices = AgglomerativeClustering(n_clusters=None, distance_threshold=threshold).fit(blobs)
-        dices = dices.labels_
+        try:
+            dices = AgglomerativeClustering(n_clusters=3, distance_threshold=None).fit(blobs)
+            dices = dices.labels_
+        except:
+            return []
         return dices
     else:
         return []
