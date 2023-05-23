@@ -73,13 +73,13 @@ class Game:
         
         #Second section
         for r in range(6, len(ROUNDS)):
+            s += '\n' + '-'*(size*3+3) + '\n'
             s += f'{ROUNDS[r]: <{size}}|'
             for p in self.players:
                 if p.board[r] is None:
                     s += ' '*size + '|'
                 else:
                     s += f'{str(p.board[r]): ^{size}}|'
-            s += '\n' + '-'*(size*3+3) + '\n'
 
 
         s += f'{"TOTAL": ^{size}}|'
