@@ -13,7 +13,7 @@ ROUNDS = ['Ones',
           '4 of a kind', 
           'Full house', 
           'Low straight', 
-          'High shraight', 
+          'High straight', 
           'Chance', 
           'Yatzee']
 
@@ -21,14 +21,10 @@ class Player:
     def __init__(self, name):
         self.name = name
         self.board = [ None for _ in range(len(ROUNDS)) ]
-        self.done = False
         self.bonus = 0
 
     def insert_score(self, score):
-        if not self.done:
-            self.board[self.board.index(None)] = score
-        else:
-            print("The game is done")
+        self.board[self.board.index(None)] = score
 
     def calc_bonus(self):
         s = sum(self.board[n] if self.board[n] is not None else 0 for n in range(6))
@@ -45,6 +41,7 @@ class Game:
         self.players = [Player('Player3'), Player('Player2')]
         self.round = 0
         self.player_select = 0
+        self.done = False
 
     def __str__(self):
         size = 15
@@ -84,6 +81,14 @@ class Game:
         s += f'{"TOTAL": ^{size}}|'
         for p in self.players:
             s += f'{p.get_total_score(): ^{size}}|'
+
+
+        if self.done:
+            res = [ p.get_total_score() for p in self.players ]
+            res_sort = sort(res, reverse=True)
+
+            s += f'\n\n{self.players[vinner].name} is the winner!!\nThe margin to the losers was more than {res[0] - res[1]}'
+
         return s
 
     def dice_roll(self, dices):
@@ -92,10 +97,12 @@ class Game:
 
         self.players[self.player_select].insert_score(score)
         self.player_select = (self.player_select + 1) % len(self.players)
-        if self.round == 5:
-            self.players[self.player_select].calc_bonus()
+        self.players[self.player_select].calc_bonus()
         if self.player_select == 0:
             self.round += 1
+
+        if self.round == len(ROUNDS) - 1 and self.player_select == len(self.players) - 1:
+            done = True
 
     def get_current_player(self):
         return self.players[self.player_select].name
