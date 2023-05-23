@@ -43,7 +43,6 @@ class Player:
 class Game:
     def __init__(self, num_players=2):
         self.players = [Player('Player3'), Player('Player2')]
-        self.throw = 0
         self.round = 0
         self.player_select = 0
 
@@ -88,19 +87,19 @@ class Game:
         return s
 
     def dice_roll(self, dices):
-        self.throw += 1
-
         score = self.calculate_score(dices, self.round)
         
-        if self.throw == 3:
-            self.throw = 0
-            self.players[self.player_select].insert_score(score)
-            self.player_select = (self.player_select + 1) % len(self.players)
-            if self.round == 5:
-                self.players[self.player_select].calc_bonus()
-            if self.player_select == 0:
-                self.round += 1
 
+        self.players[self.player_select].insert_score(score)
+        self.player_select = (self.player_select + 1) % len(self.players)
+        if self.round == 5:
+            self.players[self.player_select].calc_bonus()
+        if self.player_select == 0:
+            self.round += 1
+
+    def get_current_player(self):
+        return self.players[self.player_select].name
+    
     def calculate_score(self, dices, round):
         dices.sort()
 
