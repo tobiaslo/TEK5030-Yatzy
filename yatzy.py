@@ -39,6 +39,7 @@ class Player:
 class Game:
     def __init__(self, num_players=2):
         self.players = [Player('Player3'), Player('Player2')]
+        
         self.round = 0
         self.player_select = 0
         self.done = False
@@ -85,9 +86,10 @@ class Game:
 
         if self.done:
             res = [ p.get_total_score() for p in self.players ]
-            res_sort = sort(res, reverse=True)
+            res_sort = sorted(res, reverse=True)
 
-            s += f'\n\n{self.players[vinner].name} is the winner!!\nThe margin to the losers was more than {res[0] - res[1]}'
+            s += f'\n\n{self.players[res.index(max(res))].name} is the winner!!\nThe margin to the losers was more than {res_sort[0] - res_sort[1]}'
+            
 
         return s
 
@@ -102,7 +104,7 @@ class Game:
             self.round += 1
 
         if self.round == len(ROUNDS) - 1 and self.player_select == len(self.players) - 1:
-            done = True
+            self.done = True
 
     def get_current_player(self):
         return self.players[self.player_select].name

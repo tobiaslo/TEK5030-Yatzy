@@ -3,6 +3,95 @@ import numpy as np
 from yatzy import Game, ROUNDS
 from PIL import Image, ImageFont, ImageDraw
 
+from sklearn.cluster import AgglomerativeClustering
+
+###### thyra-testing ######
+
+def detect_dice(blobs):
+    if len(blobs) != 0 and len(blobs) != 1:
+        distance_thresh = cv2.getTrackbarPos("distance_threshold", "params")
+        dices = AgglomerativeClustering(n_clusters=None, distance_threshold=50).fit(blobs)
+        dices = dices.labels_
+        return dices
+    else:
+        return []
+    
+def draw_dices(frame, dices, keypoints):
+    corners = np.zeros(2)
+
+    #print(blobs)
+    #zipped = zip(dices, blobs)
+    #sort_zip = sorted(zipped, key=lambda x: x[0])
+
+    current_lable = 0
+    current_dice = []
+    
+    class0 = []
+    class1 = []
+    class2 = []
+    class3 = []
+    class4 = []
+
+    list_of_dices = []
+
+    for i, x in enumerate(dices):
+        if x == 0:
+            class0.append(keypoints[i])
+        elif x == 1:
+            class1.append(keypoints[i])
+        elif x == 2:
+            class2.append(keypoints[i])
+        elif x == 3:
+            class3.append(keypoints[i])
+        elif x == 4:
+            class4.append(keypoints[i])
+    
+    classes = [class0, class1, class2, class3, class4]
+    colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (200, 0, 255), (0, 100, 255)]
+
+    for i,x in enumerate(classes):
+        length = len(x)
+        if length != 0:
+            list_of_dices.append(length)
+            for o in x:
+                frame = cv2.circle(frame, (int(o.pt[0]), int(o.pt[1])), int(o.size), colors[i], -1)
+    
+    return frame, list_of_dices
+
+    #print(sort_zip)
+
+    #cv2.rectangle(img,(384,0),(510,128),(0,255,0),3)
+
+def blob(cap):
+    success, frame = cap.read()
+    contour_image = frame.copy()
+    
+    if not success:
+        cap = cv2.VideoCapture(device_id)
+        success, frame = cap.read()
+        
+    params = cv2.SimpleBlobDetector_Params()
+
+    params.filterByCircularity = True 
+    params.minCircularity = 0.85
+
+    blob_detector = cv2.SimpleBlobDetector_create(params)
+
+    keypoints = blob_detector.detect(frame)
+
+    y = [x.pt for x in keypoints]
+    #sizes = [x.size for x in keypoints]
+    #avg = np.mean(sizes)
+
+    #threshold = avg * 7.5
+
+    dices = detect_dice(y)
+
+    frame, list_of_dices = draw_dices(frame, dices, keypoints)
+
+    return frame, list_of_dices
+
+###### Daniel-testing ######
 
 def get_blobs_dynamic(frame):
     params = cv2.SimpleBlobDetector_Params()
@@ -240,6 +329,8 @@ def yatzi():
     
     cv2.createTrackbar("kernel", "params", 5, 50, PASS) #erode: kernel=4 or 5, iter = 5 / 4. Opening: kernel=25 or 5
     cv2.createTrackbar("iterations", "params", 1, 10, PASS)
+    cv2.createTrackbar("distance_threshold", "params", 90, 300, PASS)
+    
     
     #Create image processed windwos
     window_title = 'dices'
@@ -257,8 +348,12 @@ def yatzi():
         change = True
         prev_dices = []
         equal = 0
+        out_frame = None 
+        game_frame = None
         while(throws < 3):
-            out_frame, list_of_dices = detect_dices_with_morph(cap, show_first_last=False)
+            # out_frame, list_of_dices = detect_dices_with_morph(cap, show_first_last=False)
+            out_frame, list_of_dices = blob(cap)
+            
             game_frame = Image.fromarray(np.zeros((720,400)))
             if len(list_of_dices)<5: less_than_five = True
             
@@ -277,7 +372,10 @@ def yatzi():
                 less_than_five = False
                 change = True
             
-            interaction = f"{game.get_current_player()}, Round: {ROUNDS[game.round]}, Throw: {throws}"
+            if(game.round<15):
+                interaction = f"{game.get_current_player()}, Round: {ROUNDS[game.round]}, Throw: {throws}"
+            else:
+                interaction = f"GAME OVER"
             cv2.putText(out_frame, str(interaction), (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
 
             logic = f"{game.get_current_player()}, less than five: {less_than_five}, change: {change}, equal: {equal}"
@@ -302,7 +400,8 @@ def yatzi():
             if key == ord('r'):
                 game = Game()
         #Calculate score
-        game.dice_roll(prev_dices)
+        if(not game.done):
+            game.dice_roll(prev_dices)       
         
         key = cv2.waitKey(15)
         if key == ord('q') or quit_:
