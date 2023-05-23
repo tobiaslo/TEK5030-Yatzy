@@ -4,11 +4,8 @@ from sklearn.cluster import AgglomerativeClustering
 
 def detect_dice(blobs, threshold):
     if len(blobs) != 0 and len(blobs) != 1:
-        try:
-            dices = AgglomerativeClustering(n_clusters=3, distance_threshold=None).fit(blobs)
-            dices = dices.labels_
-        except:
-            return []
+        dices = AgglomerativeClustering(n_clusters=None, distance_threshold=threshold).fit(blobs)
+        dices = dices.labels_
         return dices
     else:
         return []
@@ -31,6 +28,8 @@ def draw_dices(frame, dices, keypoints):
     class3 = []
     class4 = []
 
+    list_of_dices = []
+
     for i, x in enumerate(dices):
         if x == 0:
             class0.append(keypoints[i])
@@ -47,12 +46,13 @@ def draw_dices(frame, dices, keypoints):
     colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0), (200, 0, 255), (0, 100, 255)]
 
     for i,x in enumerate(classes):
-        if len(x) != 0:
+        length = len(x)
+        if length != 0:
+            list_of_dices.append(length)
             for o in x:
-                print(o.size)
                 frame = cv2.circle(frame, (int(o.pt[0]), int(o.pt[1])), int(o.size), colors[i], -1)
     
-    return frame
+    return frame, list_of_dices
 
     #print(sort_zip)
 
@@ -75,11 +75,10 @@ def blob(frame):
     threshold = avg * 7.5
 
     dices = detect_dice(y, threshold)
-    print(dices)
 
-    frame = draw_dices(frame, dices, keypoints)
+    frame, list_of_dices = draw_dices(frame, dices, keypoints)
 
-    return frame
+    return frame, list_of_dices
 
 
 def houghLinesP(frame):
@@ -149,7 +148,7 @@ def houghLines(frame):
 
 def lab00():
     device_id = 0
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(device_id)
     
     if not cap.isOpened():
         print(f'Could not open camera {device_id}')
@@ -172,7 +171,8 @@ def lab00():
         #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         #edges = cv2.Canny(gray, 50, 100)
         
-        frame = blob(frame)
+        frame, list_of_dices = blob(frame)
+        print(list_of_dices)
         
         cv2.imshow(window_title, frame)
         delay_ms = 15
