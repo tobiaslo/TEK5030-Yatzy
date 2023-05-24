@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 from yatzy import Game, ROUNDS
 from PIL import Image, ImageFont, ImageDraw
-
 from sklearn.cluster import AgglomerativeClustering
 
 ###### thyra-testing ######
@@ -100,7 +99,7 @@ def get_blobs_dynamic(frame):
     params.filterByCircularity = True 
     params.minCircularity = circularity
 
-    area = cv2.getTrackbarPos("blob_area", "params")
+    area = cv2.getTrackbarPos("blob_area_min", "params")
     maxarea = cv2.getTrackbarPos("blob_area_max", "params")
     
     params.filterByArea = True
@@ -210,26 +209,22 @@ def overlay(frame, mask):
     image[mask==255] = (50,255,50)
     return image
 
-def detect_dices_with_morph(cap, show_all=True, show_first_last=False):
+def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
     success, frame = cap.read()
     contour_image = frame.copy()
     
     if not success:
         cap = cv2.VideoCapture(device_id)
         success, frame = cap.read()
-    
-    # contour_image = frame.copy()
-    
+        
     #Convert original image to gray
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    
     #Blur the image to remove noise      
     kernel = cv2.getTrackbarPos("kernel", "params")
     if(kernel%2 == 0):
         kernel+=1
-    blur = cv2.medianBlur(gray, kernel)
-    # blur = cv2.GaussianBlur(gray, (kernel, kernel), 0)
-    # bilate_blur = cv2.bilateralFilter(gray, kernel, 75, 75)
-    
+    blur = cv2.medianBlur(gray, kernel)   
 
     #Find all the dice blobs
     # blobs_keypoints = get_blobs(blur, circularity=0.65, min_area=90, max_area=1000) #110
@@ -269,7 +264,7 @@ def detect_dices_with_morph(cap, show_all=True, show_first_last=False):
     
     #Now we have defined a perimiter for each dice and we can calculate the score
     contour_image, list_of_dices = get_contours(combined_binary, frame)
-    # cv2.imshow("test", frame)
+
     if show_all:
         # #Visualizing the process, from first blobs to score
         out1 = draw_blobs(frame, blobs_keypoints, color=(0, 0, 255))
@@ -289,11 +284,11 @@ def detect_dices_with_morph(cap, show_all=True, show_first_last=False):
         stack = np.vstack((stack1, stack2, stack3))
         window_title = "all"
         cv2.namedWindow(window_title, cv2.WINDOW_GUI_NORMAL)
-
         cv2.imshow(window_title,stack)
+
+        #Blur
         # stack7 = np.hstack((blur, medianblur))
         # stack8 = np.hstack((bilate_blur, gray))
-        
         # stack9 = np.vstack((stack7, stack8))
         # cv2.imshow("blur",stack9)
     
@@ -306,8 +301,6 @@ def detect_dices_with_morph(cap, show_all=True, show_first_last=False):
         
     return contour_image, list_of_dices        
 
-def is_active_throw():
-    pass
 
 def yatzi():
     #Get camera
@@ -317,21 +310,15 @@ def yatzi():
     #Create params window
     cv2.namedWindow("params")
     cv2.resizeWindow("params", 200, 200)
-    cv2.createTrackbar("blob_area", "params", 115, 10000, PASS)
+    cv2.createTrackbar("blob_area_min", "params", 115, 10000, PASS)
     cv2.createTrackbar("blob_area_max", "params", 1000, 10000, PASS)
-
     cv2.createTrackbar("contour_area", "params", 500, 5000, PASS)
-
-    cv2.createTrackbar("minThreshold", "params", 125, 255, PASS)
-    cv2.createTrackbar("maxThreshold", "params", 255, 255, PASS)
-    cv2.createTrackbar("circularity", "params", 75, 100, PASS)
+    cv2.createTrackbar("circularity", "params", 85, 100, PASS)
     cv2.createTrackbar("convexity", "params", 80, 100, PASS)
-    
     cv2.createTrackbar("kernel", "params", 5, 50, PASS) #erode: kernel=4 or 5, iter = 5 / 4. Opening: kernel=25 or 5
-    cv2.createTrackbar("iterations", "params", 1, 10, PASS)
     cv2.createTrackbar("distance_threshold", "params", 90, 300, PASS)
-    
-    
+    cv2.createTrackbar("version", "params", 0, 1, PASS)
+
     #Create image processed windwos
     window_title = 'dices'
     window_title2 = 'game'
@@ -351,11 +338,22 @@ def yatzi():
         out_frame = None 
         game_frame = None
         while(throws < 3):
-            # out_frame, list_of_dices = detect_dices_with_morph(cap, show_first_last=False)
-            out_frame, list_of_dices = blob(cap)
+            version = cv2.getTrackbarPos("version", "params")
+
+            if version == 0:
+                out_frame, list_of_dices = detect_dices_with_morph(cap)
+                limit = 5
+                version_string = "Morphology and edge detection"
+            else:
+                out_frame, list_of_dices = blob(cap)
+                limit = 10
+                version_string = "Clustering"
+
             
             game_frame = Image.fromarray(np.zeros((720,400)))
-            if len(list_of_dices)<5: less_than_five = True
+            
+            if len(list_of_dices)<5: 
+                less_than_five = True
             
             if(sorted(prev_dices) == sorted(list_of_dices)) and less_than_five:
                 equal+=1
@@ -363,7 +361,7 @@ def yatzi():
                 equal = 0
                 change = True
             
-            if equal > 3:
+            if equal > limit:
                 change = False
                 equal = 0
                 
@@ -373,14 +371,16 @@ def yatzi():
                 change = True
             
             if(game.round<15):
-                interaction = f"{game.get_current_player()}, Round: {ROUNDS[game.round]}, Throw: {throws}"
+                interaction = f"{game.get_current_player()}. Round: {ROUNDS[game.round]}, Throw: {throws}"
             else:
                 interaction = f"GAME OVER"
-            cv2.putText(out_frame, str(interaction), (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
-
-            logic = f"{game.get_current_player()}, less than five: {less_than_five}, change: {change}, equal: {equal}"
-            cv2.putText(out_frame, str(logic), (10,50), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
+            version_string += f" (equal: {equal})"
+            cv2.putText(out_frame, str(version_string), (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
+            cv2.putText(out_frame, str(interaction), (10,50), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
             
+            #Check logic
+            # logic = f"{game.get_current_player()}, less than five: {less_than_five}, change: {change}, equal: {equal}"
+            # cv2.putText(out_frame, str(logic), (10,50), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
 
             draw = ImageDraw.Draw(game_frame)
             draw.text((10,10), game.__str__())
@@ -388,18 +388,25 @@ def yatzi():
             
             cv2.imshow(window_title, out_frame)
             cv2.imshow(window_title2, game_frame)
-            
-            
+                        
             prev_dices = list_of_dices
             
             key = cv2.waitKey(15)
+            #Quit game
             if key == ord('q'):
                 quit_ = True
                 break                
             
+            #Reset current game
             if key == ord('r'):
                 game = Game()
-        #Calculate score
+                throws = 0
+                less_than_five = False
+                change = True
+                prev_dices = []
+                equal = 0
+                        
+
         if(not game.done):
             game.dice_roll(prev_dices)       
         
@@ -407,7 +414,6 @@ def yatzi():
         if key == ord('q') or quit_:
             print("Quitting")
             break 
-
 
     cap.release()
     cv2.destroyAllWindows()
