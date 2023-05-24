@@ -268,12 +268,13 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
     if show_all:
         # #Visualizing the process, from first blobs to score
         out1 = draw_blobs(frame, blobs_keypoints, color=(0, 0, 255))
-        out2 = overlay(frame, convex_dice_dots)
-        out3 = overlay(frame, remaining_blobs_filled_on_black)
-        out4 = overlay(frame, remaining_blobs_dilated)
-        out5 = overlay(frame, remaining_blobs_opening)
-        out6 = overlay(frame, remaining_convex_blobs)
-        out7 = overlay(frame, convex_dice_dots_eroded)
+        out2 = overlay(frame, filled_blobs)
+        out3 = overlay(frame, convex_dice_dots)
+        out4 = overlay(frame, remaining_blobs_filled_on_black)
+        out5 = overlay(frame, remaining_blobs_dilated)
+        out6 = overlay(frame, remaining_blobs_opening)
+        out7 = overlay(frame, remaining_convex_blobs)
+        # out8 = overlay(frame, convex_dice_dots_eroded)
         out8 = overlay(frame, combined)
         out9 = contour_image
         
@@ -285,6 +286,8 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
         window_title = "all"
         cv2.namedWindow(window_title, cv2.WINDOW_GUI_NORMAL)
         cv2.imshow(window_title,stack)
+        # cv2.imshow(window_title,out1)
+        
 
         #Blur
         # stack7 = np.hstack((blur, medianblur))
@@ -341,7 +344,7 @@ def yatzi():
             version = cv2.getTrackbarPos("version", "params")
 
             if version == 0:
-                out_frame, list_of_dices = detect_dices_with_morph(cap)
+                out_frame, list_of_dices = detect_dices_with_morph(cap, show_all=True)
                 limit = 5
                 version_string = "Morphology and edge detection"
             else:
