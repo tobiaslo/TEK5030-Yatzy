@@ -4,12 +4,10 @@ from yatzy import Game, ROUNDS
 from PIL import Image, ImageFont, ImageDraw
 from sklearn.cluster import AgglomerativeClustering
 
-###### thyra-testing ######
-
 def detect_dice(blobs):
     if len(blobs) != 0 and len(blobs) != 1:
         distance_thresh = cv2.getTrackbarPos("distance_threshold", "params")
-        dices = AgglomerativeClustering(n_clusters=None, distance_threshold=50).fit(blobs)
+        dices = AgglomerativeClustering(n_clusters=None, distance_threshold=distance_thresh).fit(blobs)
         dices = dices.labels_
         return dices
     else:
@@ -17,10 +15,6 @@ def detect_dice(blobs):
     
 def draw_dices(frame, dices, keypoints):
     corners = np.zeros(2)
-
-    #print(blobs)
-    #zipped = zip(dices, blobs)
-    #sort_zip = sorted(zipped, key=lambda x: x[0])
 
     current_lable = 0
     current_dice = []
@@ -57,10 +51,6 @@ def draw_dices(frame, dices, keypoints):
     
     return frame, list_of_dices
 
-    #print(sort_zip)
-
-    #cv2.rectangle(img,(384,0),(510,128),(0,255,0),3)
-
 def blob(cap):
     success, frame = cap.read()
     contour_image = frame.copy()
@@ -79,18 +69,12 @@ def blob(cap):
     keypoints = blob_detector.detect(frame)
 
     y = [x.pt for x in keypoints]
-    #sizes = [x.size for x in keypoints]
-    #avg = np.mean(sizes)
-
-    #threshold = avg * 7.5
 
     dices = detect_dice(y)
 
     frame, list_of_dices = draw_dices(frame, dices, keypoints)
 
     return frame, list_of_dices
-
-###### Daniel-testing ######
 
 def get_blobs_dynamic(frame):
     params = cv2.SimpleBlobDetector_Params()
@@ -147,14 +131,12 @@ def dice_score(contour, out_frame, original_frame):
     approx = cv2.approxPolyDP(contour, 0.02*peri, True)
     x,y,w,h = cv2.boundingRect(approx)
     
-    # keypoints = get_blobs(original_frame)
     keypoints = get_blobs_dynamic(original_frame)
     dice_dots = 0
     for keypoint in keypoints:
         if(cv2.pointPolygonTest(contour, (keypoint.pt), measureDist=False)>=0):
             dice_dots+=1
     
-    #Display dice values
     if dice_dots > 0:
         cv2.putText(out_frame, str(dice_dots), (x+20,y), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
     return dice_dots
@@ -227,7 +209,6 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
     blur = cv2.medianBlur(gray, kernel)   
 
     #Find all the dice blobs
-    # blobs_keypoints = get_blobs(blur, circularity=0.65, min_area=90, max_area=1000) #110
     blobs_keypoints = get_blobs_dynamic(blur)
             
     #Fill the blobs, which are currently only framed by their edges, this results in a merge of all dices, except "one's" and "two's"
@@ -254,12 +235,10 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
     remaining_convex_blobs = fill_convexhull(remaining_blobs_opening, frame.shape)
     
     #Erode the convexhulls, doing so will enable us to seperate all dices (i.e "sixe's" from "two's")
-    # remaining_convex_blobs_eroded = cv2.erode(remaining_convex_blobs,  cv2.getStructuringElement(cv2.MORPH_ERODE, (5,5)), iterations=5)
     convex_dice_dots_eroded = cv2.erode(convex_dice_dots,  cv2.getStructuringElement(cv2.MORPH_ERODE, (5,5)), iterations=2)
     
     #Combine the two blob images and create a binary threshold image
     combined = convex_dice_dots + remaining_convex_blobs
-    # combined = cv2.dilate(combined, cv2.getStructuringElement(cv2.MORPH_CROSS, (2,2)), iterations=1)
     combined_binary = get_binary_image(combined)
     
     #Now we have defined a perimiter for each dice and we can calculate the score
@@ -274,7 +253,6 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
         out5 = overlay(frame, remaining_blobs_dilated)
         out6 = overlay(frame, remaining_blobs_opening)
         out7 = overlay(frame, remaining_convex_blobs)
-        # out8 = overlay(frame, convex_dice_dots_eroded)
         out8 = overlay(frame, combined)
         out9 = contour_image
         
@@ -286,14 +264,6 @@ def detect_dices_with_morph(cap, show_all=False, show_first_last=False):
         window_title = "all"
         cv2.namedWindow(window_title, cv2.WINDOW_GUI_NORMAL)
         cv2.imshow(window_title,stack)
-        # cv2.imshow(window_title,out1)
-        
-
-        #Blur
-        # stack7 = np.hstack((blur, medianblur))
-        # stack8 = np.hstack((bilate_blur, gray))
-        # stack9 = np.vstack((stack7, stack8))
-        # cv2.imshow("blur",stack9)
     
     if show_first_last:
         #First and last
@@ -318,7 +288,7 @@ def yatzi():
     cv2.createTrackbar("contour_area", "params", 500, 5000, PASS)
     cv2.createTrackbar("circularity", "params", 85, 100, PASS)
     cv2.createTrackbar("convexity", "params", 80, 100, PASS)
-    cv2.createTrackbar("kernel", "params", 5, 50, PASS) #erode: kernel=4 or 5, iter = 5 / 4. Opening: kernel=25 or 5
+    cv2.createTrackbar("kernel", "params", 5, 50, PASS)
     cv2.createTrackbar("distance_threshold", "params", 90, 300, PASS)
     cv2.createTrackbar("version", "params", 0, 1, PASS)
 
@@ -352,7 +322,6 @@ def yatzi():
                 limit = 10
                 version_string = "Clustering"
 
-            
             game_frame = Image.fromarray(np.zeros((720,400)))
             
             if len(list_of_dices)<5: 
@@ -381,10 +350,6 @@ def yatzi():
             cv2.putText(out_frame, str(version_string), (10,20), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
             cv2.putText(out_frame, str(interaction), (10,50), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
             
-            #Check logic
-            # logic = f"{game.get_current_player()}, less than five: {less_than_five}, change: {change}, equal: {equal}"
-            # cv2.putText(out_frame, str(logic), (10,50), cv2.FONT_HERSHEY_COMPLEX, 0.7, (0,0,255), 2)
-
             draw = ImageDraw.Draw(game_frame)
             draw.text((10,10), game.__str__())
             game_frame = np.array(game_frame)
@@ -395,12 +360,10 @@ def yatzi():
             prev_dices = list_of_dices
             
             key = cv2.waitKey(15)
-            #Quit game
             if key == ord('q'):
                 quit_ = True
                 break                
             
-            #Reset current game
             if key == ord('r'):
                 game = Game()
                 throws = 0
@@ -409,7 +372,6 @@ def yatzi():
                 prev_dices = []
                 equal = 0
                         
-
         if(not game.done):
             game.dice_roll(prev_dices)       
         
